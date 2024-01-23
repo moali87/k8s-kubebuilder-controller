@@ -1,0 +1,101 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.13.0
+  name: myappresources.app.interviews.myrepo.io
+spec:
+  group: app.interviews.myrepo.io
+  names:
+    kind: MyAppResource
+    listKind: MyAppResourceList
+    plural: myappresources
+    singular: myappresource
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: MyAppResource is the Schema for the myappresources API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: MyAppResourceSpec defines the desired state of MyAppResource
+            properties:
+              image:
+                description: Image repository details
+                properties:
+                  repository:
+                    type: string
+                  tag:
+                    type: string
+                required:
+                - repository
+                - tag
+                type: object
+              redis:
+                description: Redis enabled or disabled.  Default false
+                properties:
+                  enabled:
+                    description: Redis enabled or disabled.  Default false.
+                    type: string
+                type: object
+              replicaCount:
+                description: ReplicaCount field specifies how many podInfo containers
+                  should be running.  Default 1
+                format: int32
+                type: integer
+              resources:
+                description: Resources (CPU/MEM) for pod/container
+                properties:
+                  cpuLimit:
+                    type: string
+                  memoryLimit:
+                    type: string
+                type: object
+              ui:
+                description: UI display config for podInfo
+                properties:
+                  color:
+                    description: Color Hex value of color
+                    type: string
+                  message:
+                    description: Message value to print to screen from podInfo
+                    type: string
+                required:
+                - color
+                - message
+                type: object
+            required:
+            - image
+            - redis
+            - resources
+            - ui
+            type: object
+          status:
+            description: MyAppResourceStatus defines the observed state of MyAppResource
+            properties:
+              runningReplicas:
+                description: ReplicaCount is the number of running replicas for podInfo
+                  container Created with MyAppResource kind
+                format: int32
+                minimum: 0
+                type: integer
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
