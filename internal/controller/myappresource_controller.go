@@ -25,6 +25,7 @@ import (
 	kapps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -173,6 +174,30 @@ func (r *MyAppResourceReconciler) cleanUpResources(ctx context.Context, log logr
 }
 
 func buildDeploymentTemplate(myKind v1alpha1.MyAppResource) *kapps.Deployment {
+    var baseContainers []core.Container = []core.Container{
+        {
+            Name: fmt.Sprintf("%s-podinfo", myKind.GetName()),
+            Image: fmt.Sprintf("%s:%s", myKind.Spec.Image.Repository, myKind.Spec.Image.Tag),
+            Resources: core.ResourceRequirements{
+                Limits: core.ResourceList{
+                    core.ResourceMemory: resource.MustParse(myKind.Spec.Resources.MemoryLimit),
+                },
+                Requests: core.ResourceList{
+                    core.ResourceCPU: resource.MustParse(myKind.Spec.Resources.CPURequest),
+                },
+            },
+            Env: []core.EnvVar{
+                {
+                    Name: "PODINFO_UI_COLOR",
+                    Value: myKind.Spec.UI.Color,
+                },
+                {
+                    Name: "PODINFO_UI_MESSAGE",
+                    Value: myKind.Spec.UI.Message,
+                },
+            },
+        },
+    }
     var redisContainer core.Container = core.Container{
         Name: fmt.Sprintf("%s-redis", myKind.GetName()),
         Image: "redis:latest",
@@ -182,6 +207,26 @@ func buildDeploymentTemplate(myKind v1alpha1.MyAppResource) *kapps.Deployment {
                 Name: "RedisPort",
             },
         },
+    }
+
+    var redisEnvVar core.EnvVar = core.EnvVar{
+        Name: "PODINFO_CACHE_SERVER",
+        Value: "tcp://redis:6379",
+    }
+
+    var podInfoEnvVar []core.EnvVar = []core.EnvVar{
+        {
+            Name: "PODINFO_UI_COLOR",
+            Value: myKind.Spec.UI.Color,
+        },
+        {
+            Name: "PODINFO_UI_MESSAGE",
+            Value: myKind.Spec.UI.Message,
+        },
+    }
+    if strings.ToLower(myKind.Spec.Redis.Enabled) == "true" {
+        podInfoEnvVar = append(podInfoEnvVar, redisEnvVar)
+        baseContainers = append(baseContainers, redisContainer)
     }
 
     deployment := kapps.Deployment{
@@ -204,26 +249,7 @@ func buildDeploymentTemplate(myKind v1alpha1.MyAppResource) *kapps.Deployment {
                     },
                 },
                 Spec: core.PodSpec{
-                    Containers: []core.Container{
-                        {
-                            Name: fmt.Sprintf("%s-podinfo", myKind.GetName()),
-                            Image: fmt.Sprintf("%s:%s", myKind.Spec.Image.Repository, myKind.Spec.Image.Tag),
-                            Env: []core.EnvVar{
-                                {
-                                    Name: "PODINFO_UI_COLOR",
-                                    Value: myKind.Spec.UI.Color,
-                                },
-                                {
-                                    Name: "PODINFO_UI_MESSAGE",
-                                    Value: myKind.Spec.UI.Message,
-                                },
-                                {
-                                    Name: "PODINFO_CACHE_SERVER",
-                                    Value: "tcp://redis:6379",
-                                },
-                            },
-                        },
-                    },
+                    Containers: baseContainers,
                 },
             },
         },
